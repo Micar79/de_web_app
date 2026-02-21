@@ -1,32 +1,32 @@
-"""ETL module: placeholder Spark batch job using PySpark."""
+"""ETL module: placeholder batch job."""
 import os
-from pyspark.sql import SparkSession
+import csv
 
 
 def run_spark_etl():
-    """Run a simple Spark job that reads CSVs from /data/raw and writes Parquet to /data/processed.
+    """Run a simple ETL job that reads CSVs from /data/raw and writes processed files to /data/processed.
     This is a lightweight example — expand with real transformations.
     """
-    spark = (
-        SparkSession.builder
-        .appName("de_etl_job")
-        .master("local[*]")
-        .getOrCreate()
-    )
-
     raw_dir = "/data/raw"
     out_dir = "/data/processed"
     os.makedirs(out_dir, exist_ok=True)
 
     if not os.path.exists(raw_dir):
-        spark.stop()
         return
 
-    df = spark.read.option("header", True).csv(raw_dir)
-    # Example transform: cast amount if present
-    if "amount" in df.columns:
-        from pyspark.sql.functions import col
-        df = df.withColumn("amount", col("amount").cast("double"))
-
-    df.coalesce(1).write.mode("append").parquet(out_dir)
-    spark.stop()
+    # Simple CSV processing
+    for filename in os.listdir(raw_dir):
+        if filename.endswith('.csv'):
+            input_path = os.path.join(raw_dir, filename)
+            output_path = os.path.join(out_dir, f"processed_{filename}")
+            
+            try:
+                with open(input_path, 'r') as infile, open(output_path, 'w', newline='') as outfile:
+                    reader = csv.DictReader(infile)
+                    if reader.fieldnames:
+                        writer = csv.DictWriter(outfile, fieldnames=reader.fieldnames)
+                        writer.writeheader()
+                        for row in reader:
+                            writer.writerow(row)
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
